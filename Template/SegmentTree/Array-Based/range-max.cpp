@@ -5,14 +5,9 @@ struct SegmentTree {
     int n;
     vector<long long> tree;
 
-    vector<long long> lazySet; // 赋值懒标记
-    vector<bool> hasSet;       // 是否存在赋值标记
-
     SegmentTree(int size) {
         n = size;
         tree.resize(4 * n);
-        lazySet.resize(4 * n);
-        hasSet.resize(4 * n, false);
     }
 
     void build(vector<long long>& arr, int node, int l, int r) {
@@ -20,55 +15,54 @@ struct SegmentTree {
             tree[node] = arr[l];
             return;
         }
-        int mid = (l + r) >> 1;
-        build(arr, node << 1, l, mid);
-        build(arr, node << 1 | 1, mid + 1, r);
-        tree[node] = max(tree[node << 1], tree[node << 1 | 1]);
+        int mid = (l + r) / 2;
+        build(arr, node * 2, l, mid);
+        build(arr, node * 2 + 1, mid + 1, r);
+        tree[node] = max(tree[node * 2], tree[node * 2 + 1]);
     }
 
-    void applySet(int node, long long val) {
-        tree[node] = val;
-        lazySet[node] = val;
-        hasSet[node] = true;
-    }
-
-    void pushDown(int node) {
-        if (hasSet[node]) {
-            applySet(node << 1, lazySet[node]);
-            applySet(node << 1 | 1, lazySet[node]);
-            hasSet[node] = false;
+    // 单点赋值
+    void update_point(int idx, long long val, int node, int l, int r) {
+        if (l == r) {
+            tree[node] = val;
+            return;
         }
+        int mid = (l + r) / 2;
+        if (idx <= mid) update_point(idx, val, node * 2, l, mid);
+        else update_point(idx, val, node * 2 + 1, mid + 1, r);
+
+        tree[node] = max(tree[node * 2], tree[node * 2 + 1]);
     }
 
-    void update(int node, int l, int r, int ql, int qr, long long val) {
-        if (ql <= l && r <= qr) {
-            applySet(node, val);
+    // 区间赋值（逐点更新实现）
+    void update_range_val(int ql, int qr, long long val, int node, int l, int r) {
+        if (ql > r || qr < l) return;
+
+        if (l == r) {
+            tree[node] = val;
             return;
         }
 
-        pushDown(node);
+        int mid = (l + r) / 2;
+        update_range_val(ql, qr, val, node * 2, l, mid);
+        update_range_val(ql, qr, val, node * 2 + 1, mid + 1, r);
 
-        int mid = (l + r) >> 1;
-        if (ql <= mid) update(node << 1, l, mid, ql, qr, val);
-        if (qr > mid)  update(node << 1 | 1, mid + 1, r, ql, qr, val);
-
-        tree[node] = max(tree[node << 1], tree[node << 1 | 1]);
+        tree[node] = max(tree[node * 2], tree[node * 2 + 1]);
     }
 
-    long long query(int node, int l, int r, int ql, int qr) {
+    // 区间最大值查询
+    long long query_range_max(int ql, int qr, int node, int l, int r) {
+        if (ql > r || qr < l) return LLONG_MIN;
+
         if (ql <= l && r <= qr) {
             return tree[node];
         }
 
-        pushDown(node);
-
-        int mid = (l + r) >> 1;
-        long long res = LLONG_MIN;
-
-        if (ql <= mid) res = max(res, query(node << 1, l, mid, ql, qr));
-        if (qr > mid)  res = max(res, query(node << 1 | 1, mid + 1, r, ql, qr));
-
-        return res;
+        int mid = (l + r) / 2;
+        return max(
+            query_range_max(ql, qr, node * 2, l, mid),
+            query_range_max(ql, qr, node * 2 + 1, mid + 1, r)
+        );
     }
 };
 
@@ -82,10 +76,10 @@ int main() {
     st.build(arr, 1, 0, n - 1);
 
     // query the max within range [1:4]
-    cout << st.query(1, 0, n - 1, 1, 4) << endl; 
+    cout << st.query(1, 4, 1, 0, n-1) << endl; 
 
     // update the range [1:3] with the new value 100
-    st.update(1, 0, n - 1, 1, 3, 100);
+    st.update(1, 3, 100, 1, 0, n-1);
 
-    cout << st.query(1, 0, n - 1, 1, 4) << endl;
+    cout << st.query(1, 4, 1, 0, n-1) << endl;
 }
